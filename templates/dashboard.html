@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<main class="app-main">
+<div class="container">
+
+<h1>Health Dashboard</h1>
+
+<p class="muted">
+    Only real saved account information is displayed.
+</p>
+
+<div class="stat-grid">
+
+{% for k,v in [
+    ('Age',user.age or '—'),
+    ('Height',user.height or '—'),
+    ('Weight',user.weight or '—'),
+    ('BMI',user.bmi or '—'),
+    ('Checks',checks)
+] %}
+
+<div class="card stat">
+    <span class="muted">{{k}}</span>
+    <strong>{{v}}</strong>
+</div>
+
+{% endfor %}
+
+</div>
+
+
+<!-- BMI HEALTH STATUS -->
+
+{% if user.bmi %}
+
+<div class="card bmi-status" style="margin-top:20px;">
+
+    <span class="muted">BMI Health Status</span>
+
+    {% if user.bmi < 18.5 %}
+
+        <h2>Underweight</h2>
+        <p>
+            Your BMI is below the normal range.
+            You may need proper nutrition and a balanced diet.
+            Consider discussing your nutritional needs with a healthcare professional.
+        </p>
+
+    {% elif user.bmi < 25 %}
+
+        <h2>Normal BMI</h2>
+        <p>
+            Your BMI is within the usual healthy range.
+            Continue maintaining a balanced diet and regular physical activity.
+        </p>
+
+    {% elif user.bmi < 30 %}
+
+        <h2>Overweight</h2>
+        <p>
+            Your BMI is above the usual healthy range.
+            Focus on a balanced diet, regular physical activity,
+            and healthy lifestyle habits.
+        </p>
+
+    {% else %}
+
+        <h2>Obesity Range</h2>
+        <p>
+            Your BMI is in the obesity range.
+            Consider discussing your health and nutrition goals
+            with a qualified healthcare professional.
+        </p>
+
+    {% endif %}
+
+    <small class="muted">
+        BMI is a general screening measure and does not by itself determine overall health.
+    </small>
+
+</div>
+
+{% endif %}
+
+
+<div class="grid" style="margin-top:20px">
+
+<div class="card">
+    <span class="muted">Saved AI conversations</span>
+    <h2>{{chats}}</h2>
+</div>
+
+<div class="card">
+    <span class="muted">Saved health records</span>
+    <h2>{{reports}}</h2>
+</div>
+
+</div>
+
+</div>
+</main>
+
+{% endblock %}

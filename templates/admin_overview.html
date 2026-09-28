@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block title %}Overview{% endblock %}{% block content %}<main class="app-main"><div class="container"><h1>System Overview</h1><div class="stat-grid" style="margin-top:25px">{% for k,v in stats.items() %}<div class="card stat"><span class="muted">{{k|title}}</span><strong>{{v}}</strong></div>{% endfor %}</div></div></main>{% endblock %}

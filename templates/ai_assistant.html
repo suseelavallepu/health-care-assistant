@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}AI Assistant{% endblock %}
+
+{% block content %}
+<main class="app-main">
+<div class="container">
+
+<div class="section-head">
+    <h1>AI Health Assistant</h1>
+    <p class="muted">General health education. Not a diagnosis or prescription.</p>
+</div>
+
+<div class="chat-layout">
+
+<!-- CHAT HISTORY -->
+<div class="card">
+    <input id="chatSearch" class="field" placeholder="Search chats">
+
+    <button class="btn" id="newChat">+ New Chat</button>
+
+    <div id="chatList"></div>
+</div>
+
+
+<!-- CHAT AREA -->
+<div class="card">
+
+    <div id="messages" class="messages">
+        <p class="muted">Create a chat to begin.</p>
+    </div>
+
+    <!-- SUGGESTED QUESTIONS -->
+    <div id="suggestions" class="suggestions">
+        <p class="muted">Suggested questions</p>
+
+        <button class="suggestion"
+        onclick="useQuestion('How much water should I drink daily?')">
+        How much water should I drink daily?
+        </button>
+
+        <button class="suggestion"
+        onclick="useQuestion('How can I improve my sleep?')">
+        How can I improve my sleep?
+        </button>
+
+        <button class="suggestion"
+        onclick="useQuestion('What causes frequent headaches?')">
+        What causes frequent headaches?
+        </button>
+
+        <button class="suggestion"
+        onclick="useQuestion('What foods are good for a healthy diet?')">
+        What foods are good for a healthy diet?
+        </button>
+
+        <button class="suggestion"
+        onclick="useQuestion('How can I reduce stress?')">
+        How can I reduce stress?
+        </button>
+
+        <button class="suggestion"
+        onclick="useQuestion('How much exercise should I do daily?')">
+        How much exercise should I do daily?
+        </button>
+    </div>
+
+    <div class="chat-compose">
+        <input id="message"
+               placeholder="Ask a general health question">
+
+        <button class="btn" id="send">Send</button>
+    </div>
+
+</div>
+
+</div>
+</div>
+</main>
+
+
+<script>
+
+let active = null;
+
+const list = document.getElementById('chatList');
+const msgs = document.getElementById('messages');
+
+const esc = s => s.replace(/[&<>"']/g, c =>
+({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+}[c]));
+
+
+/* LOAD CHAT HISTORY */
+
+async function chats(q=''){
+
+    let r = await fetch('/api/chats?q=' + encodeURIComponent(q));
+    let a = await r.json();
+
+    list.innerHTML = a.map(x => `
+        <div class="chat-item">
+
+            <span onclick="openChat(${x.id})">
+                ${esc(x.title)}
+            </span>
+
+            <button class="delete-chat"
+                    onclick="deleteChat(${x.id}, event)"
+                    title="Delete chat">
+                🗑️
+            </button>
+
+        </div>
+    `).join('');
+}
+
+
+/* OPEN CHAT */
+
+async function openChat(id){
+
+    active = id;
+
+    let r = await fetch('/api/chats/' + id);
+    let c = await r.json();
+
+    msgs.innerHTML = c.messages.map(m =>
+        `<div class="msg ${m.role}">${esc(m.content)}</div>`
+    ).join('');
+
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+
+/* DELETE CHAT */
+
+async function deleteChat(id, event){
+
+    event.stopPropagation();
+
+    if(!confirm('Delete this chat?')) return;
+
+    await fetch('/api/chats/' + id, {
+        method:'DELETE'
+    });
+
+    if(active === id){
+        active = null;
+        msgs.innerHTML =
+            '<p class="muted">Create a chat to begin.</p>';
+    }
+
+    chats();
+}
+
+
+/* NEW CHAT */
+
+document.getElementById('newChat').onclick = async () => {
+
+    let r = await fetch('/api/chats', {
+        method:'POST'
+    });
+
+    let c = await r.json();
+
+    active = c.id;
+
+    await chats();
+
+    openChat(c.id);
+};
+
+
+/* SUGGESTED QUESTION */
+
+function useQuestion(question){
+
+    document.getElementById('message').value = question;
+
+    document.getElementById('message').focus();
+}
+
+
+/* SEND MESSAGE */
+
+async function send(){
+
+    let i = document.getElementById('message');
+    let t = i.value.trim();
+
+    if(!t) return;
+
+    if(!active){
+
+        let r = await fetch('/api/chats',{
+            method:'POST'
+        });
+
+        active = (await r.json()).id;
+    }
+
+    msgs.innerHTML +=
+        `<div class="msg user">${esc(t)}</div>
+         <div class="msg assistant">Thinking…</div>`;
+
+    i.value = '';
+
+    let r = await fetch(
+        '/api/chats/' + active + '/message',
+        {
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json'
+            },
+            body:JSON.stringify({
+                message:t
+            })
+        }
+    );
+
+    let d = await r.json();
+
+    let a = msgs.querySelectorAll('.msg');
+
+    a[a.length-1].textContent =
+        d.answer ||
+        d.error ||
+        'AI service unavailable';
+
+    msgs.scrollTop = msgs.scrollHeight;
+
+    chats();
+}
+
+
+/* SEND BUTTON */
+
+document.getElementById('send').onclick = send;
+
+
+/* ENTER KEY */
+
+document.getElementById('message').onkeydown = e => {
+
+    if(e.key === 'Enter'){
+        send();
+    }
+
+};
+
+
+/* SEARCH */
+
+document.getElementById('chatSearch').oninput = e =>
+    chats(e.target.value);
+
+
+/* INITIAL LOAD */
+
+chats();
+
+</script>
+
+
+<style>
+
+.chat-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:10px 12px;
+    margin-top:8px;
+    border-radius:10px;
+    cursor:pointer;
+    background:#f7f9fc;
+}
+
+.chat-item span{
+    flex:1;
+}
+
+.chat-item:hover{
+    background:#eef4ff;
+}
+
+.delete-chat{
+    border:0;
+    background:transparent;
+    cursor:pointer;
+    font-size:15px;
+    opacity:.65;
+}
+
+.delete-chat:hover{
+    opacity:1;
+}
+
+.suggestions{
+    margin-top:20px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+
+.suggestions p{
+    width:100%;
+    margin-bottom:2px;
+}
+
+.suggestion{
+    border:1px solid #dbe4f0;
+    background:#f8fafc;
+    padding:9px 13px;
+    border-radius:20px;
+    cursor:pointer;
+    font-size:13px;
+}
+
+.suggestion:hover{
+    background:#eef4ff;
+}
+
+</style>
+
+{% endblock %}
